@@ -225,81 +225,16 @@ with tab_sad:
     else:
         st.error("Check: S > deschidere → Ajustează distanța / offsetul a")
 
-# -------- Schiță --------
-with tab_sketch:
-    st.subheader("Schiță rezervor orizontal – capace elipsoidale 2:1 (la scară)")
-    from matplotlib.patches import Rectangle, Ellipse
-
-    # Helperi pentru cote (text deasupra)
-    def cota_oriz(ax, x1, x2, y, label, dy_text=0.08, color="black"):
-        ax.annotate("", xy=(x1, y), xytext=(x2, y),
-                    arrowprops=dict(arrowstyle="<->", lw=1.4, color=color, shrinkA=4, shrinkB=4))
-        ax.text((x1+x2)/2, y + dy_text * D, label, ha="center", va="bottom", fontsize=11, color=color,
-                bbox=dict(facecolor="white", edgecolor="none", pad=1.5))
-
-    def cota_vert(ax, x, y1, y2, label, dx_text=0.06, color="black"):
-        ax.annotate("", xy=(x, y1), xytext=(x, y2),
-                    arrowprops=dict(arrowstyle="<->", lw=1.4, color=color, shrinkA=4, shrinkB=4))
-        ax.text(x + dx_text * D, (y1+y2)/2, label, ha="left", va="center", rotation=90, fontsize=11, color=color,
-                bbox=dict(facecolor="white", edgecolor="none", pad=1.5))
-
-    # Geometrie pentru desen
-    Rplot = R; Dplot = D; Lc = L_cyl; Ltot = L_total; hcap = h_head
-    x_tan_L = hcap; x_tan_R = hcap + Lc
-    x_s1 = x_tan_L - a
-    S_chosen = S_user if S_user > 0 else 0.4 * L_cyl
-    x_s2 = x_tan_L + S_chosen
-    span_av = Ltot - 2 * a
-
-    fig, ax = plt.subplots(figsize=(11, 3.6))
-
-    # Cilindru + capace 2:1 (elipse)
-    ax.add_patch(Rectangle((x_tan_L, -Rplot), Lc, 2*Rplot, fill=False, lw=2.5, joinstyle="round"))
-    ax.add_patch(Ellipse((x_tan_L, 0), width=2*hcap, height=2*Rplot, angle=0, fill=False, lw=2.5))
-    ax.add_patch(Ellipse((x_tan_R, 0), width=2*hcap, height=2*Rplot, angle=0, fill=False, lw=2.5))
-    ax.plot([x_tan_L, x_tan_L], [-Rplot, Rplot], color="black", lw=2.5)
-    ax.plot([x_tan_R, x_tan_R], [-Rplot, Rplot], color="black", lw=2.5)
-    ax.axhline(0, color="0.5", lw=0.8, ls="--", alpha=0.5)
-
-    # Saddle-uri
-    pad_h = 0.15 * Rplot
-    ax.add_patch(Rectangle((x_s1 - 0.05 * Dplot, -Rplot - pad_h), 0.10 * Dplot, pad_h, color="#ff8c00"))
-    ax.add_patch(Rectangle((x_s2 - 0.05 * Dplot, -Rplot - pad_h), 0.10 * Dplot, pad_h, color="#2e7d32"))
-    ax.text(x_s1, -Rplot - pad_h - 0.22 * Dplot, "Saddle 1", ha="center", va="top", fontsize=10)
-    ax.text(x_s2, -Rplot - pad_h - 0.22 * Dplot, "Saddle 2", ha="center", va="top", fontsize=10)
-
-    # Cote
-    cota_vert(ax, x_tan_L + Lc/2, -Rplot, Rplot, f"D = {D:.2f} m")
-    cota_oriz(ax, x_tan_L, x_tan_R, 1.28*Rplot, f"L_cil = {Lc:.2f} m", dy_text=0.06)
-    cota_oriz(ax, 0, Ltot, -1.45*Rplot, f"L_total = {Ltot:.2f} m", dy_text=0.06)
-    cota_oriz(ax, x_s1, x_tan_L, -1.05*Rplot, f"a = {a:.2f} m", dy_text=0.06)
-    cota_oriz(ax, x_s1, x_s2, -1.25*Rplot, f"S ales = {S_chosen:.2f} m", dy_text=0.06, color="tab:blue")
-    cota_oriz(ax, x_tan_L - a, x_tan_R + a, -1.65*Rplot, f"Deschidere = {span_av:.2f} m", dy_text=0.06, color="tab:green")
-
-    ax.set_aspect("equal", adjustable="box")
-    ax.set_xlim(-0.35 * Dplot, Ltot + 0.35 * Dplot)
-    ax.set_ylim(-2.0 * Rplot, 1.75 * Rplot)
-    ax.axis("off")
-    st.pyplot(fig)
-
-    # Export PNG
-    buf_img = io.BytesIO()
-    fig.savefig(buf_img, format="png", dpi=200, bbox_inches="tight")
-    buf_img.seek(0)
-    st.download_button("Descarcă schița (PNG)", data=buf_img, file_name="schita_rezervor_orizontal.png", mime="image/png")
-
 # =========================== Export Word (DOCX) – Concluzii ===========================
 from docx import Document
-from docx.shared import Pt, Inches
+from docx.shared import Pt
 from docx.enum.text import WD_ALIGN_PARAGRAPH
+import io
 
-def make_conclusions_docx(geom, mech, saddles) -> bytes:
+def make_conclusions_docx(geom: dict, mech: dict, saddles: dict) -> bytes:
     """
     Generează un DOCX cu concluzii concise: Geometrie, Verificare mecanică, Saddle-uri.
-    Parametrii așteptați:
-      geom: dict cu chei R [m], h_cap [m], L_cil [m], L_total [m], V_head (1) [m³], V_total calc [m³], ΔV [m³], L/D rezultat [-]
-      mech: dict cu chei σ utilizată [MPa], h design [m], t_req [mm], t_min [mm], CA [mm], t_nom [mm], t_disp [mm]
-      saddles: dict cu chei S_rec_min [m], S_rec_max [m], Deschidere [m]
+    Așteaptă chei ca în geom_dict / mech_dict / saddles_dict din script.
     """
     d = Document()
 
@@ -308,55 +243,49 @@ def make_conclusions_docx(geom, mech, saddles) -> bytes:
     title.alignment = WD_ALIGN_PARAGRAPH.CENTER
     run = title.runs[0]; run.bold = True; run.font.size = Pt(14)
 
-    # Geometrie
+    # 1) Geometrie
     d.add_heading("1) Geometrie & Capacitate", level=2)
+    D_val = 2 * geom.get("R [m]", 0.0)
     p = d.add_paragraph()
-    p.add_run(f"Diametru D: ").bold = True; p.add_run(f"{2*geom['R [m]']:.2f} m\n")
-    p.add_run(f"Lungime cilindru L_cil: ").bold = True; p.add_run(f"{geom['L_cil [m]']:.2f} m\n")
-    p.add_run(f"Lungime totală L_total: ").bold = True; p.add_run(f"{geom['L_total [m]']:.2f} m\n")
-    p.add_run(f"Volum total calculat: ").bold = True; p.add_run(f"{geom['V_total calc [m³]']:.2f} m³\n")
-    p.add_run(f"Abatere ΔV (față de țintă): ").bold = True; 
-    dv = geom["ΔV [m³]"]; p.add_run(f"{dv:+.2f} m³  ").bold = False
-    # verdict ΔV
-    if abs(dv) <= 0.5:
-        p.add_run("(OK – în toleranță)").italic = True
-    else:
-        p.add_run("(Ajustează D/L/D pentru ΔV≈0)").italic = True
+    p.add_run("Diametru D: ").bold = True;          p.add_run(f"{D_val:.2f} m\n")
+    p.add_run("Lungime cilindru L_cil: ").bold = True; p.add_run(f"{geom.get('L_cil [m]', 0.0):.2f} m\n")
+    p.add_run("Lungime totală L_total: ").bold = True; p.add_run(f"{geom.get('L_total [m]', 0.0):.2f} m\n")
+    p.add_run("Volum total calculat: ").bold = True;    p.add_run(f"{geom.get('V_total calc [m³]', 0.0):.2f} m³\n")
+    dv = float(geom.get("ΔV [m³]", 0.0))
+    p.add_run("Abatere ΔV (față de țintă): ").bold = True; p.add_run(f"{dv:+.2f} m³  ")
+    p.add_run("(OK – în toleranță)" if abs(dv) <= 0.5 else "(Ajustează D / L/D pentru ΔV≈0)").italic = True
 
-    # Verificare mecanică
+    # 2) Verificare mecanică
     d.add_heading("2) Verificare mecanică (efort cerc – hidrostatic)", level=2)
-    ok_mech = (mech["t_disp [mm]"] >= max(mech["t_req [mm]"], mech["t_min [mm]"]))
-    tbl = d.add_table(rows=4, cols=4)
+    ok_mech = (mech.get("t_disp [mm]", 0.0) >= max(mech.get("t_req [mm]", 0.0), mech.get("t_min [mm]", 0.0)))
+    tbl = d.add_table(rows=2, cols=4)
     tbl.style = "Light Grid Accent 1"
     hdr = tbl.rows[0].cells
     hdr[0].text = "σ utilizată [MPa]"; hdr[1].text = "t_req [mm]"
-    hdr[2].text = "t_min [mm]"; hdr[3].text = "t_disp = t_nom − CA [mm]"
+    hdr[2].text = "t_min [mm]";        hdr[3].text = "t_disp = t_nom − CA [mm]"
     row = tbl.rows[1].cells
-    row[0].text = f"{mech['σ utilizată [MPa]']:.2f}"
-    row[1].text = f"{mech['t_req [mm]']:.2f}"
-    row[2].text = f"{mech['t_min [mm]']:.2f}"
-    row[3].text = f"{mech['t_disp [mm]']:.2f}"
+    row[0].text = f"{mech.get('σ utilizată [MPa]', 0.0):.2f}"
+    row[1].text = f"{mech.get('t_req [mm]', 0.0):.2f}"
+    row[2].text = f"{mech.get('t_min [mm]', 0.0):.2f}"
+    row[3].text = f"{mech.get('t_disp [mm]', 0.0):.2f}"
 
     verdict = d.add_paragraph()
-    verdict_run = verdict.add_run("Verdict: ")
-    verdict_run.bold = True
+    verdict.add_run("Verdict: ").bold = True
     verdict.add_run("OK – grosimea este suficientă" if ok_mech else "NU – crește grosimea (t_disp < max(t_req, t_min))").bold = True
 
-    # Saddle-uri
+    # 3) Saddle-uri
     d.add_heading("3) Saddle-uri (dispunere)", level=2)
     p2 = d.add_paragraph()
     p2.add_run("Distanță recomandată S: ").bold = True
-    p2.add_run(f"{saddles['S_rec_min [m]']:.2f} – {saddles['S_rec_max [m]']:.2f} m\n")
+    p2.add_run(f"{saddles.get('S_rec_min [m]', 0.0):.2f} – {saddles.get('S_rec_max [m]', 0.0):.2f} m\n")
     p2.add_run("Deschidere disponibilă L_total − 2a: ").bold = True
-    p2.add_run(f"{saddles['Deschidere [m]']:.2f} m\n")
-    p2.add_run("Notă: alege S în intervalul recomandat și verifică S ≤ deschidere.").italic = True
+    p2.add_run(f"{saddles.get('Deschidere [m]', 0.0):.2f} m\n")
+    p2.add_run("Alege S în intervalul recomandat și verifică S ≤ deschidere.").italic = True
 
-    # Footer scurt
-    d.add_paragraph().add_run("Acest raport sumarizează rezultatele principale; pentru detalii vedeți aplicația.").italic = True
+    d.add_paragraph().add_run("Raport generat automat de aplicație.").italic = True
 
     buf = io.BytesIO()
-    d.save(buf)
-    buf.seek(0)
+    d.save(buf); buf.seek(0)
     return buf.read()
 
 # Pregătim dicționarele deja create mai sus (geom_dict, mech_dict, saddles_dict, df_lv existent)
