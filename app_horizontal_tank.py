@@ -167,10 +167,6 @@ with tab_lv:
     ax.set_ylabel("Volum total [m³]")
     ax.set_title("Curba NIVEL–VOLUM (orizontal)")
     st.pyplot(fig)
-    st.caption(
-    "Notă: curba nivel–volum tratează volumul capetelor ca termen constant; "
-    "pentru precizie ridicată la niveluri extreme, e necesară integrarea volumului capetelor."
-    )
 
 # -------- Verificare mecanică --------
 with tab_mech:
@@ -228,5 +224,3 @@ docx_bytes = make_conclusions_docx(geom_dict, mech_dict, saddles_dict)
 st.download_button("Descarcă raport (Word)", data=docx_bytes,
                    file_name="Raport_rezervor_orizontal.docx",
                    mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
-
-st.caption("Notă: curba nivel–volum tratează volumul capetelor ca termen constant; pentru precizie ridicată la niveluri extreme, e necesară integrarea volumului capetelor.")
