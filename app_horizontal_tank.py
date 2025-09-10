@@ -98,10 +98,10 @@ with tab_mech:
     c2.metric("t_req [mm]", f"{t_req_mm:.2f}")
     c3.metric("t_disp = t_nom - CA [mm]", f"{t_disp_mm:.2f}")
     c4.metric("Necesar ≥ max(t_req, t_min)", f"{need:.2f}")
-if ok:
-    st.success("OK – grosimea este suficientă")
-else:
-    st.error("Crește grosimea – t_disp < max(t_req, t_min)")
+    if ok:
+        st.success("OK – grosimea este suficientă")
+    else:
+        st.error("Crește grosimea – t_disp < max(t_req, t_min)")
 
 with tab_sad:
     st.write("**Saddle-uri (simplificat)**")
@@ -119,86 +119,99 @@ with tab_sketch:
     import matplotlib.pyplot as plt
     from matplotlib.patches import Rectangle, Ellipse
 
-    st.write("**Schiță rezervor orizontal – capace elipsoidale 2:1 (la scară)**")
+    st.subheader("Schiță rezervor orizontal – capace elipsoidale 2:1 (la scară)")
 
-    # Geometrie pentru desen (la scară)
-    Rplot = R
-    Dplot = D
-    Lc = L_cyl
-    hcap = h_head          # = D/4 pentru 2:1
-    # Axa X: 0 .. L_total
-    x_tan_L = hcap         # poziția liniei tangente stânga
-    x_tan_R = hcap + Lc    # poziția liniei tangente dreapta
+    # ---------------- Helperi pentru linii de cotă (text deasupra) ----------------
+    def cota_oriz(ax, x1, x2, y, label, dy_text=0.08, color="black"):
+        ax.annotate(
+            "", xy=(x1, y), xytext=(x2, y),
+            arrowprops=dict(arrowstyle="<->", lw=1.4, color=color, shrinkA=4, shrinkB=4)
+        )
+        ax.text(
+            (x1 + x2) / 2, y + dy_text * D, label,
+            ha="center", va="bottom", fontsize=11, color=color,
+            bbox=dict(facecolor="white", edgecolor="none", pad=1.5)
+        )
 
+    def cota_vert(ax, x, y1, y2, label, dx_text=0.06, color="black"):
+        ax.annotate(
+            "", xy=(x, y1), xytext=(x, y2),
+            arrowprops=dict(arrowstyle="<->", lw=1.4, color=color, shrinkA=4, shrinkB=4)
+        )
+        ax.text(
+            x + dx_text * D, (y1 + y2) / 2, label,
+            ha="left", va="center", rotation=90, fontsize=11, color=color,
+            bbox=dict(facecolor="white", edgecolor="none", pad=1.5)
+        )
+
+    # ---------------- Geometrie pentru desen ----------------
+    Rplot   = R
+    Dplot   = D
+    Lc      = L_cyl
+    hcap    = h_head                  # = D/4 pentru 2:1
+    Ltot    = L_total
+    x_tan_L = hcap                    # poziția liniei tangente stânga
+    x_tan_R = hcap + Lc               # poziția liniei tangente dreapta
+
+    # Poziții saddle-uri (centru–centru)
+    x_s1 = x_tan_L - a                # centrul saddle 1
+    x_s2 = x_tan_L + S_chosen         # centrul saddle 2
+    span_av = Ltot - 2 * a            # deschiderea disponibilă
+
+    # ---------------- Desen ----------------
     fig, ax = plt.subplots(figsize=(11, 3.6))
 
-    # 1) Cilindrul
-    ax.add_patch(Rectangle((x_tan_L, -Rplot), Lc, 2*Rplot, fill=False, lw=2.5, joinstyle="round"))
+    # Cilindru
+    ax.add_patch(Rectangle((x_tan_L, -Rplot), Lc, 2 * Rplot, fill=False, lw=2.5, joinstyle="round"))
 
-    # 2) Capace elipsoidale 2:1 (jumătăți de elipsă)
-    # Elipsă stânga: centru la (x_tan_L, 0), axa X = 2*hcap (= D/2), axa Y = D
-    eL = Ellipse((x_tan_L, 0), width=2*hcap, height=2*Rplot, angle=0, fill=False, lw=2.5)
-    eR = Ellipse((x_tan_R, 0), width=2*hcap, height=2*Rplot, angle=0, fill=False, lw=2.5)
-    # păstrăm doar jumătățile „din afara” cilindrului desenând elipsele și apoi suprapunând cilindrul
+    # Capace elipsoidale 2:1 – jumătăți de elipsă (la scară)
+    eL = Ellipse((x_tan_L, 0), width=2 * hcap, height=2 * Rplot, angle=0, fill=False, lw=2.5)
+    eR = Ellipse((x_tan_R, 0), width=2 * hcap, height=2 * Rplot, angle=0, fill=False, lw=2.5)
     ax.add_patch(eL)
     ax.add_patch(eR)
 
-    # 3) Linii tangente (cap–cilindru)
+    # Linii tangente (cap–cilindru)
     ax.plot([x_tan_L, x_tan_L], [-Rplot, Rplot], color="black", lw=2.5)
     ax.plot([x_tan_R, x_tan_R], [-Rplot, Rplot], color="black", lw=2.5)
 
-    # 4) Axe/ghidaje
-    ax.axhline(0, color="0.5", lw=0.8, ls="--")  # axa rezervorului
-    # Linie de nivel opțională (mijlocul diametrului)
-    ax.axhline(0.0, color="tab:blue", lw=1.2, ls=(0,(4,4)), alpha=0.4)
+    # Axa rezervorului (ghid punctat)
+    ax.axhline(0, color="0.5", lw=0.8, ls="--", alpha=0.5)
 
-    # 5) Saddle-uri: poziții
-    x_s1 = x_tan_L - a
-    x_s2 = x_tan_L + S_chosen
-    # patine (plăcuțe) – 0.15*R înălțime
-    pad_h = 0.15*Rplot
-    ax.add_patch(Rectangle((x_s1-0.05*Dplot, -Rplot-pad_h), 0.10*Dplot, pad_h, color="#ff8c00"))
-    ax.add_patch(Rectangle((x_s2-0.05*Dplot, -Rplot-pad_h), 0.10*Dplot, pad_h, color="#2e7d32"))
-    ax.text(x_s1, -Rplot-pad_h-0.08*Dplot, "Saddle 1", ha="center", va="top", fontsize=9)
-    ax.text(x_s2, -Rplot-pad_h-0.08*Dplot, "Saddle 2", ha="center", va="top", fontsize=9)
+    # Saddle-uri: patine colorate
+    pad_h = 0.15 * Rplot
+    ax.add_patch(Rectangle((x_s1 - 0.05 * Dplot, -Rplot - pad_h), 0.10 * Dplot, pad_h, color="#ff8c00"))
+    ax.add_patch(Rectangle((x_s2 - 0.05 * Dplot, -Rplot - pad_h), 0.10 * Dplot, pad_h, color="#2e7d32"))
+    ax.text(x_s1, -Rplot - pad_h - 0.22 * Dplot, "Saddle 1", ha="center", va="top", fontsize=10)
+    ax.text(x_s2, -Rplot - pad_h - 0.22 * Dplot, "Saddle 2", ha="center", va="top", fontsize=10)
 
-    # 6) Cote (funcție ajutătoare)
-    def cote(ax, x1, y1, x2, y2, text, ofs=0.0, rot=0, color="black"):
-        ax.annotate("", xy=(x1,y1), xytext=(x2,y2),
-                    arrowprops=dict(arrowstyle="<->", lw=1.2, color=color))
-        ax.text((x1+x2)/2 + ofs, (y1+y2)/2 + ofs, text, ha="center", va="center",
-                fontsize=10, rotation=rot, color=color)
+    # ---------------- Cote (text deasupra liniilor) ----------------
+    # Diametru D (vertical, la mijlocul cilindrului)
+    cota_vert(ax, x_tan_L + Lc / 2, -Rplot, Rplot, f"D = {D:.2f} m")
 
-    # D (vertical, la mijlocul cilindrului)
-    cote(ax, x_tan_L+Lc/2, -Rplot, x_tan_L+Lc/2, Rplot, f"D = {D:.2f} m", rot=90)
+    # L_cil (sus)
+    cota_oriz(ax, x_tan_L, x_tan_R, 1.28 * Rplot, f"L_cil = {Lc:.2f} m", dy_text=0.06)
 
-    # L_total
-    Ltot = L_total
-    cote(ax, 0, -1.35*Rplot, Ltot, -1.35*Rplot, f"L_total = {Ltot:.2f} m")
+    # L_total (jos)
+    cota_oriz(ax, 0, Ltot, -1.45 * Rplot, f"L_total = {Ltot:.2f} m", dy_text=0.06)
 
-    # L_cil
-    cote(ax, x_tan_L, 1.20*Rplot, x_tan_R, 1.20*Rplot, f"L_cil = {Lc:.2f} m")
+    # a (offset de la tangentă la centrul saddle 1)
+    cota_oriz(ax, x_s1, x_tan_L, -1.05 * Rplot, f"a = {a:.2f} m", dy_text=0.06)
 
-    # a (offset de la tangentă la centrul saddle)
-    cote(ax, x_tan_L, -1.00*Rplot, x_s1, -1.00*Rplot, f"a = {a:.2f} m")
+    # S ales (albastru)
+    cota_oriz(ax, x_s1, x_s2, -1.25 * Rplot, f"S ales = {S_chosen:.2f} m", dy_text=0.06, color="tab:blue")
 
-    # S ales
-    cote(ax, x_s1, -1.18*Rplot, x_s2, -1.18*Rplot, f"S ales = {S_chosen:.2f} m", color="tab:blue")
+    # Deschidere disponibilă (verde)
+    cota_oriz(ax, x_tan_L - a, x_tan_R + a, -1.65 * Rplot, f"Deschidere = {span_av:.2f} m", dy_text=0.06, color="tab:green")
 
-    # Deschidere disponibilă (L_total - 2a)
-    span_av = Ltot - 2*a
-    cote(ax, x_tan_L - a, -1.60*Rplot, x_tan_R + a, -1.60*Rplot,
-         f"Deschidere = {span_av:.2f} m", color="tab:green")
-
-    # 7) Aspect grafic
+    # Aspect grafic
     ax.set_aspect("equal", adjustable="box")
-    ax.set_xlim(-0.3*Dplot, Ltot + 0.3*Dplot)
-    ax.set_ylim(-2.0*Rplot, 1.7*Rplot)
+    ax.set_xlim(-0.35 * Dplot, Ltot + 0.35 * Dplot)
+    ax.set_ylim(-2.0 * Rplot, 1.75 * Rplot)
     ax.axis("off")
 
     st.pyplot(fig)
 
-    # Buton export PNG
+    # Export PNG
     import io
     buf = io.BytesIO()
     fig.savefig(buf, format="png", dpi=200, bbox_inches="tight")
