@@ -96,7 +96,7 @@ with tab_mech:
     c2.metric("t_req [mm]", f"{t_req_mm:.2f}")
     c3.metric("t_disp = t_nom - CA [mm]", f"{t_disp_mm:.2f}")
     c4.metric("Necesar ≥ max(t_req, t_min)", f"{need:.2f}")
-    if ok:
+if ok:
     st.success("OK – grosimea este suficientă")
 else:
     st.error("Crește grosimea – t_disp < max(t_req, t_min)")
