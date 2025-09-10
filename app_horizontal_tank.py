@@ -115,101 +115,93 @@ with tab_sad:
     c3.metric("Check S ≤ deschidere", "OK" if S_chosen <= span else "Depășește")
 
 with tab_sketch:
-    st.write("**Schiță rezervor orizontal (nu la scară)**")
+    import numpy as np
     import matplotlib.pyplot as plt
-    from matplotlib.patches import Circle, Arc, Rectangle
+    from matplotlib.patches import Rectangle, Ellipse
 
-    # Geometrie de desen
+    st.write("**Schiță rezervor orizontal – capace elipsoidale 2:1 (la scară)**")
+
+    # Geometrie pentru desen (la scară)
     Rplot = R
-    Lcap = h_head           # proiecția capului 2:1 elipsoidal pe axa lungimii (h_cap = D/4)
-    x0 = 0.0
-    x1 = Lcap
-    x2 = Lcap + L_cyl
-    x3 = Lcap*2 + L_cyl     # L_total
+    Dplot = D
+    Lc = L_cyl
+    hcap = h_head          # = D/4 pentru 2:1
+    # Axa X: 0 .. L_total
+    x_tan_L = hcap         # poziția liniei tangente stânga
+    x_tan_R = hcap + Lc    # poziția liniei tangente dreapta
 
-    # Poziții saddle (centru–centru)
-    # folosim S_chosen (din tab-ul Saddle-uri) și a (offset față de tangentă)
-    x_s1 = x1 - a           # centrul saddle stânga
-    x_s2 = x1 + S_chosen    # centrul saddle dreapta propus
-    span_available = L_total - 2*a
+    fig, ax = plt.subplots(figsize=(11, 3.6))
 
-    fig, ax = plt.subplots(figsize=(10, 3))
+    # 1) Cilindrul
+    ax.add_patch(Rectangle((x_tan_L, -Rplot), Lc, 2*Rplot, fill=False, lw=2.5, joinstyle="round"))
 
-    # Cilindru (rect)
-    ax.add_patch(Rectangle((x1, -Rplot), L_cyl, 2*Rplot, fill=False, linewidth=2))
+    # 2) Capace elipsoidale 2:1 (jumătăți de elipsă)
+    # Elipsă stânga: centru la (x_tan_L, 0), axa X = 2*hcap (= D/2), axa Y = D
+    eL = Ellipse((x_tan_L, 0), width=2*hcap, height=2*Rplot, angle=0, fill=False, lw=2.5)
+    eR = Ellipse((x_tan_R, 0), width=2*hcap, height=2*Rplot, angle=0, fill=False, lw=2.5)
+    # păstrăm doar jumătățile „din afara” cilindrului desenând elipsele și apoi suprapunând cilindrul
+    ax.add_patch(eL)
+    ax.add_patch(eR)
 
-    # Capete 2:1 (aprox. cu arcuri de elipsă: folosim arce de cerc pentru schiță)
-    # Stânga
-    arcL = Arc((x1, 0), width=2*Rplot, height=2*Rplot, theta1=90, theta2=270, linewidth=2)
-    ax.add_patch(arcL)
-    # Dreapta
-    arcR = Arc((x2, 0), width=2*Rplot, height=2*Rplot, theta1=-90, theta2=90, linewidth=2)
-    ax.add_patch(arcR)
+    # 3) Linii tangente (cap–cilindru)
+    ax.plot([x_tan_L, x_tan_L], [-Rplot, Rplot], color="black", lw=2.5)
+    ax.plot([x_tan_R, x_tan_R], [-Rplot, Rplot], color="black", lw=2.5)
 
-    # Axă centrală
-    ax.plot([x0, x3], [0, 0], linestyle="--", linewidth=1)
+    # 4) Axe/ghidaje
+    ax.axhline(0, color="0.5", lw=0.8, ls="--")  # axa rezervorului
+    # Linie de nivel opțională (mijlocul diametrului)
+    ax.axhline(0.0, color="tab:blue", lw=1.2, ls=(0,(4,4)), alpha=0.4)
 
-    # Saddle-uri (reazeme)
-    ax.plot([x_s1, x_s1], [-Rplot-0.15*Rplot, -Rplot], linewidth=4)
-    ax.plot([x_s2, x_s2], [-Rplot-0.15*Rplot, -Rplot], linewidth=4)
-    ax.text(x_s1, -Rplot-0.2*Rplot, "Saddle 1", ha="center", va="top", fontsize=9)
-    ax.text(x_s2, -Rplot-0.2*Rplot, "Saddle 2", ha="center", va="top", fontsize=9)
+    # 5) Saddle-uri: poziții
+    x_s1 = x_tan_L - a
+    x_s2 = x_tan_L + S_chosen
+    # patine (plăcuțe) – 0.15*R înălțime
+    pad_h = 0.15*Rplot
+    ax.add_patch(Rectangle((x_s1-0.05*Dplot, -Rplot-pad_h), 0.10*Dplot, pad_h, color="#ff8c00"))
+    ax.add_patch(Rectangle((x_s2-0.05*Dplot, -Rplot-pad_h), 0.10*Dplot, pad_h, color="#2e7d32"))
+    ax.text(x_s1, -Rplot-pad_h-0.08*Dplot, "Saddle 1", ha="center", va="top", fontsize=9)
+    ax.text(x_s2, -Rplot-pad_h-0.08*Dplot, "Saddle 2", ha="center", va="top", fontsize=9)
 
-    # Dimensiuni
-    # Diametru D
-    ax.annotate("", xy=(x1+L_cyl/2, -Rplot), xytext=(x1+L_cyl/2, Rplot),
-                arrowprops=dict(arrowstyle="<->"))
-    ax.text(x1+L_cyl/2, 0, f"D = {D:.2f} m", ha="left", va="center", rotation=90, fontsize=9)
+    # 6) Cote (funcție ajutătoare)
+    def cote(ax, x1, y1, x2, y2, text, ofs=0.0, rot=0, color="black"):
+        ax.annotate("", xy=(x1,y1), xytext=(x2,y2),
+                    arrowprops=dict(arrowstyle="<->", lw=1.2, color=color))
+        ax.text((x1+x2)/2 + ofs, (y1+y2)/2 + ofs, text, ha="center", va="center",
+                fontsize=10, rotation=rot, color=color)
+
+    # D (vertical, la mijlocul cilindrului)
+    cote(ax, x_tan_L+Lc/2, -Rplot, x_tan_L+Lc/2, Rplot, f"D = {D:.2f} m", rot=90)
 
     # L_total
-    ax.annotate("", xy=(x0, -1.35*Rplot), xytext=(x3, -1.35*Rplot),
-                arrowprops=dict(arrowstyle="<->"))
-    ax.text((x0+x3)/2, -1.45*Rplot, f"L_total = {L_total:.2f} m", ha="center", va="top", fontsize=9)
+    Ltot = L_total
+    cote(ax, 0, -1.35*Rplot, Ltot, -1.35*Rplot, f"L_total = {Ltot:.2f} m")
 
     # L_cil
-    ax.annotate("", xy=(x1, 1.2*Rplot), xytext=(x2, 1.2*Rplot),
-                arrowprops=dict(arrowstyle="<->"))
-    ax.text((x1+x2)/2, 1.25*Rplot, f"L_cil = {L_cyl:.2f} m", ha="center", va="bottom", fontsize=9)
+    cote(ax, x_tan_L, 1.20*Rplot, x_tan_R, 1.20*Rplot, f"L_cil = {Lc:.2f} m")
 
-    # Offset a (de la tangentă la centrul saddle)
-    ax.annotate("", xy=(x1, -1.0*Rplot), xytext=(x_s1, -1.0*Rplot),
-                arrowprops=dict(arrowstyle="<->"))
-    ax.text((x1+x_s1)/2, -0.95*Rplot, f"a = {a:.2f} m", ha="center", va="bottom", fontsize=9)
+    # a (offset de la tangentă la centrul saddle)
+    cote(ax, x_tan_L, -1.00*Rplot, x_s1, -1.00*Rplot, f"a = {a:.2f} m")
 
-    # S (distanța aleasă)
-    ax.annotate("", xy=(x_s1, -1.15*Rplot), xytext=(x_s2, -1.15*Rplot),
-                arrowprops=dict(arrowstyle="<->", color="tab:blue"))
-    ax.text((x_s1+x_s2)/2, -1.2*Rplot, f"S ales = {S_chosen:.2f} m", ha="center", va="top", color="tab:blue", fontsize=9)
+    # S ales
+    cote(ax, x_s1, -1.18*Rplot, x_s2, -1.18*Rplot, f"S ales = {S_chosen:.2f} m", color="tab:blue")
 
     # Deschidere disponibilă (L_total - 2a)
-    ax.annotate("", xy=(x1-a, -1.6*Rplot), xytext=(x2+a, -1.6*Rplot),
-                arrowprops=dict(arrowstyle="<->", color="tab:green"))
-    ax.text((x1-a+x2+a)/2, -1.7*Rplot, f"Deschidere = {span_available:.2f} m", ha="center", va="top", color="tab:green", fontsize=9)
+    span_av = Ltot - 2*a
+    cote(ax, x_tan_L - a, -1.60*Rplot, x_tan_R + a, -1.60*Rplot,
+         f"Deschidere = {span_av:.2f} m", color="tab:green")
 
-    # Aspect grafic
-    ax.set_xlim(x0 - 0.2*D, x3 + 0.2*D)
-    ax.set_ylim(-2.0*Rplot, 1.7*Rplot)
+    # 7) Aspect grafic
     ax.set_aspect("equal", adjustable="box")
+    ax.set_xlim(-0.3*Dplot, Ltot + 0.3*Dplot)
+    ax.set_ylim(-2.0*Rplot, 1.7*Rplot)
     ax.axis("off")
+
     st.pyplot(fig)
 
-# Export Excel minimal
-from openpyxl import Workbook
-def to_excel_buffer(df, inputs_dict):
-    wb = Workbook()
-    ws = wb.active; ws.title="Date"
-    r=1
-    for k,v in inputs_dict.items():
-        ws.cell(r,1).value=str(k); ws.cell(r,2).value=float(v) if isinstance(v,(int,float)) else v; r+=1
-    ws2=wb.create_sheet("Nivel–Volum")
-    ws2.append(list(df.columns))
-    for row in df.itertuples(index=False):
-        ws2.append(list(row))
-    buf=io.BytesIO(); wb.save(buf); buf.seek(0); return buf
+    # Buton export PNG
+    import io
+    buf = io.BytesIO()
+    fig.savefig(buf, format="png", dpi=200, bbox_inches="tight")
+    buf.seek(0)
+    st.download_button("Descarcă schița (PNG)", data=buf, file_name="schita_rezervor_orizontal.png", mime="image/png")
 
-inputs_dict = {"ρ [kg/m³]":rho,"V_util [m³]":V_work,"f_umplere [-]":f_fill,"V_total țintă [m³]":V_total_target,
-               "L/D [-]":L_over_D,"D [m]":D,"R [m]":R,"L_cil [m]":L_cyl,"L_total [m]":L_total,
-               "σ utilizată [MPa]":sigma_allow/SF,"t_req [mm]":(rho*9.80665*D*R)/((sigma_allow/SF)*1000.0),
-               "t_min [mm]":t_min,"CA [mm]":CA,"t_nom [mm]":t_nom,"t_disp [mm]":t_nom-CA}
-buf = to_excel_buffer(df, inputs_dict)
-st.download_button("Descarcă Excel", data=buf, file_name="Rezervor_orizontal_Streamlit.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
