@@ -21,7 +21,7 @@ def level_segment_area(R, h):
         return math.pi * R**2
     return R**2 * math.acos((R - h) / R) - (R - h) * math.sqrt(max(0.0, 2*R*h - h**2))
 
-st.title("Dimensionare rezervor orizontal (cilindru + capace elipsoidale 2:1)")
+st.title("Dimensionare Rezervor Orizontal")
 
 with st.sidebar:
     st.header("Date de intrare")
@@ -30,7 +30,7 @@ with st.sidebar:
     f_fill = st.slider("Fracție de umplere admisă f_umplere [-]", 0.5, 1.0, 0.9, 0.01)
     V_total_target = V_work / f_fill if f_fill>0 else 0.0
     st.caption(f"Volum total de proiectare V_total = {V_total_target:.3f} m³")
-    L_over_D = st.slider("Raport L/D (recomandat 2–5)", 1.5, 6.0, 3.0, 0.1)
+    L_over_D = st.slider("Raport L/D (recomandat 2–5)", 1.50, 6.00, 3.00, step=0.01, format="%.2f")
     D = st.number_input("Diametru ales D [m]", value=3.2, min_value=0.1)
     CA = st.number_input("Adaos coroziune CA [mm]", value=1.0, min_value=0.0)
     sigma_allow = st.number_input("Tensiune admisă material σ_adm [MPa]", value=120.0, min_value=1.0)
@@ -96,7 +96,10 @@ with tab_mech:
     c2.metric("t_req [mm]", f"{t_req_mm:.2f}")
     c3.metric("t_disp = t_nom - CA [mm]", f"{t_disp_mm:.2f}")
     c4.metric("Necesar ≥ max(t_req, t_min)", f"{need:.2f}")
-    st.success("OK – grosimea este suficientă") if ok else st.error("Crește grosimea – t_disp < max(t_req, t_min)")
+    if ok:
+    st.success("OK – grosimea este suficientă")
+else:
+    st.error("Crește grosimea – t_disp < max(t_req, t_min)")
 
 with tab_sad:
     st.write("**Saddle-uri (simplificat)**")
