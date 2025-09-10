@@ -288,8 +288,11 @@ def make_conclusions_docx(geom: dict, mech: dict, saddles: dict) -> bytes:
     d.save(buf); buf.seek(0)
     return buf.read()
 
-# Pregătim dicționarele deja create mai sus (geom_dict, mech_dict, saddles_dict, df_lv existent)
+# (după ce ai construit geom_dict, mech_dict, saddles_dict)
 docx_bytes = make_conclusions_docx(geom_dict, mech_dict, saddles_dict)
-st.download_button("Descarcă raport (Word)", data=docx_bytes,
-                   file_name="Raport_rezervor_orizontal.docx",
-                   mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+st.download_button(
+    "Descarcă raport (Word)",
+    data=docx_bytes,
+    file_name="Raport_rezervor_orizontal.docx",
+    mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+)
