@@ -167,6 +167,10 @@ with tab_lv:
     ax.set_ylabel("Volum total [m³]")
     ax.set_title("Curba NIVEL–VOLUM (orizontal)")
     st.pyplot(fig)
+    st.caption(
+    "Notă: curba nivel–volum tratează volumul capetelor ca termen constant; "
+    "pentru precizie ridicată la niveluri extreme, e necesară integrarea volumului capetelor."
+    )
 
 # -------- Verificare mecanică --------
 with tab_mech:
