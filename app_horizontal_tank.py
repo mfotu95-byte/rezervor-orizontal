@@ -49,7 +49,9 @@ V_cyl = math.pi * R**2 * L_cyl
 V_total_guess = V_cyl + 2.0*V_head
 dV = V_total_guess - V_total_target
 
-tab_geom, tab_lv, tab_mech, tab_sad = st.tabs(["Geometrie", "Nivel–Volum", "Verificare mecanică", "Saddle-uri"])
+tab_geom, tab_lv, tab_mech, tab_sad, tab_sketch = st.tabs(
+    ["Geometrie", "Nivel–Volum", "Verificare mecanică", "Saddle-uri", "Schiță"]
+)
 
 with tab_geom:
     c1, c2, c3, c4 = st.columns(4)
@@ -111,6 +113,85 @@ with tab_sad:
     c1.metric("Interval recomandat S", f"{S_rec_low:.3f} – {S_rec_high:.3f} m")
     c2.metric("Deschidere totală disponibilă", f"{span:.3f} m")
     c3.metric("Check S ≤ deschidere", "OK" if S_chosen <= span else "Depășește")
+
+with tab_sketch:
+    st.write("**Schiță rezervor orizontal (nu la scară)**")
+    import matplotlib.pyplot as plt
+    from matplotlib.patches import Circle, Arc, Rectangle
+
+    # Geometrie de desen
+    Rplot = R
+    Lcap = h_head           # proiecția capului 2:1 elipsoidal pe axa lungimii (h_cap = D/4)
+    x0 = 0.0
+    x1 = Lcap
+    x2 = Lcap + L_cyl
+    x3 = Lcap*2 + L_cyl     # L_total
+
+    # Poziții saddle (centru–centru)
+    # folosim S_chosen (din tab-ul Saddle-uri) și a (offset față de tangentă)
+    x_s1 = x1 - a           # centrul saddle stânga
+    x_s2 = x1 + S_chosen    # centrul saddle dreapta propus
+    span_available = L_total - 2*a
+
+    fig, ax = plt.subplots(figsize=(10, 3))
+
+    # Cilindru (rect)
+    ax.add_patch(Rectangle((x1, -Rplot), L_cyl, 2*Rplot, fill=False, linewidth=2))
+
+    # Capete 2:1 (aprox. cu arcuri de elipsă: folosim arce de cerc pentru schiță)
+    # Stânga
+    arcL = Arc((x1, 0), width=2*Rplot, height=2*Rplot, theta1=90, theta2=270, linewidth=2)
+    ax.add_patch(arcL)
+    # Dreapta
+    arcR = Arc((x2, 0), width=2*Rplot, height=2*Rplot, theta1=-90, theta2=90, linewidth=2)
+    ax.add_patch(arcR)
+
+    # Axă centrală
+    ax.plot([x0, x3], [0, 0], linestyle="--", linewidth=1)
+
+    # Saddle-uri (reazeme)
+    ax.plot([x_s1, x_s1], [-Rplot-0.15*Rplot, -Rplot], linewidth=4)
+    ax.plot([x_s2, x_s2], [-Rplot-0.15*Rplot, -Rplot], linewidth=4)
+    ax.text(x_s1, -Rplot-0.2*Rplot, "Saddle 1", ha="center", va="top", fontsize=9)
+    ax.text(x_s2, -Rplot-0.2*Rplot, "Saddle 2", ha="center", va="top", fontsize=9)
+
+    # Dimensiuni
+    # Diametru D
+    ax.annotate("", xy=(x1+L_cyl/2, -Rplot), xytext=(x1+L_cyl/2, Rplot),
+                arrowprops=dict(arrowstyle="<->"))
+    ax.text(x1+L_cyl/2, 0, f"D = {D:.2f} m", ha="left", va="center", rotation=90, fontsize=9)
+
+    # L_total
+    ax.annotate("", xy=(x0, -1.35*Rplot), xytext=(x3, -1.35*Rplot),
+                arrowprops=dict(arrowstyle="<->"))
+    ax.text((x0+x3)/2, -1.45*Rplot, f"L_total = {L_total:.2f} m", ha="center", va="top", fontsize=9)
+
+    # L_cil
+    ax.annotate("", xy=(x1, 1.2*Rplot), xytext=(x2, 1.2*Rplot),
+                arrowprops=dict(arrowstyle="<->"))
+    ax.text((x1+x2)/2, 1.25*Rplot, f"L_cil = {L_cyl:.2f} m", ha="center", va="bottom", fontsize=9)
+
+    # Offset a (de la tangentă la centrul saddle)
+    ax.annotate("", xy=(x1, -1.0*Rplot), xytext=(x_s1, -1.0*Rplot),
+                arrowprops=dict(arrowstyle="<->"))
+    ax.text((x1+x_s1)/2, -0.95*Rplot, f"a = {a:.2f} m", ha="center", va="bottom", fontsize=9)
+
+    # S (distanța aleasă)
+    ax.annotate("", xy=(x_s1, -1.15*Rplot), xytext=(x_s2, -1.15*Rplot),
+                arrowprops=dict(arrowstyle="<->", color="tab:blue"))
+    ax.text((x_s1+x_s2)/2, -1.2*Rplot, f"S ales = {S_chosen:.2f} m", ha="center", va="top", color="tab:blue", fontsize=9)
+
+    # Deschidere disponibilă (L_total - 2a)
+    ax.annotate("", xy=(x1-a, -1.6*Rplot), xytext=(x2+a, -1.6*Rplot),
+                arrowprops=dict(arrowstyle="<->", color="tab:green"))
+    ax.text((x1-a+x2+a)/2, -1.7*Rplot, f"Deschidere = {span_available:.2f} m", ha="center", va="top", color="tab:green", fontsize=9)
+
+    # Aspect grafic
+    ax.set_xlim(x0 - 0.2*D, x3 + 0.2*D)
+    ax.set_ylim(-2.0*Rplot, 1.7*Rplot)
+    ax.set_aspect("equal", adjustable="box")
+    ax.axis("off")
+    st.pyplot(fig)
 
 # Export Excel minimal
 from openpyxl import Workbook
